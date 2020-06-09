@@ -1,2 +1,2 @@
 # motoroiler
-Arduino-base automatic motorcycle chain oiler
+Arduino-based automatic motorcycle chain oiler
