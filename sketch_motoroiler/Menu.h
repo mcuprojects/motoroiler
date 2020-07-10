@@ -4,8 +4,11 @@
 #include <Arduino.h>
 
 void init_menu();
+void clear_screen();
 void draw_top_menu(uint8_t index = 0);
 void draw_sub_menu(uint8_t index = 0, uint8_t option = 0);
+void menu_up();
+void menu_down();
 
 void draw_middle_menu_line(const char *text, const uint16_t offset = 0);
 void draw_sub_menu_sidebar(bool up = true, bool down = true);

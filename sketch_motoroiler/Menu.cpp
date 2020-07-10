@@ -58,20 +58,22 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 uint16_t scroll_pos = 0;
 uint16_t scroll_count = 0;
-char *scroll_text = NULL;
+str_id_t scroll_text = 0;
+str_id_t menu_header_text = 0;
 void (*scroll_draw_func)(const char *text, const uint16_t offset) = NULL;
 volatile uint8_t scroll_state = SCROLL_OFF;
-char *menu_header_text = NULL;
+
+uint8_t top_menu_pos = 0;
 
 // INTERNAL FUNCTIONS
 
-void draw_middle_menu_line(const char *text, const uint16_t offset = 0) {
+void draw_middle_menu_line(const str_id_t text, const uint16_t offset = 0) {
   display.fillRect(0, 7, display.width(), 18, SSD1306_WHITE);
   display.setTextColor(SSD1306_BLACK);
   display.setTextSize(2);
   display.setCursor(2 - offset, 9);
   display.setTextWrap(false);
-  display.println(text);
+  display.println(tr(text));
 
   display.display();
 }
@@ -84,31 +86,34 @@ void draw_sub_menu_sidebar(bool up, bool down) {
     display.drawBitmap(display.width() - SIDE_BAR_WIDTH + 1, 23, down_bmp, DOWN_BMP_WIDTH, DOWN_BMP_HEIGHT, SSD1306_WHITE);
 }
 
-void draw_sub_menu_line(const char *text, const uint16_t offset = 0) {
+void draw_sub_menu_line(const str_id_t text, const uint16_t offset = 0) {
   display.fillRect(0, TOP_BAR_HEIGHT, display.width(), display.height() - TOP_BAR_HEIGHT, SSD1306_BLACK);
   // draw value
   display.setTextSize(2);
   display.setCursor(0 - offset, 14);
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(false);
-  display.println(text);
+  display.println(tr(text));
   // draw side arrows
   draw_sub_menu_sidebar();
 
   display.display();
 }
 
-void draw_info(const char *info_text) {
+void draw_info(const str_id_t info_text) {
   // draw info header
+  char buffer[20];
+  strcpy_P(buffer, (char*)tr(info_text));
+  buffer[19] = 0;
   display.fillRect(0, 0, display.width(), TOP_BAR_HEIGHT, SSD1306_WHITE);
-  uint16_t w = SMALL_CHAR_WIDTH * strlen(info_text);
+  uint16_t w = SMALL_CHAR_WIDTH * strlen(buffer);
   uint16_t x = display.width() - w - 1;
   display.setTextColor(SSD1306_BLACK);
   display.setCursor(x, 1);
-  display.println(info_text);
-  char *pos = strchr(info_text, '\x07');
+  display.println(buffer);
+  char *pos = strchr(buffer, '\x07');
   if (pos) {
-    x += (pos - info_text) * SMALL_CHAR_WIDTH;
+    x += (pos - buffer) * SMALL_CHAR_WIDTH;
     display.drawBitmap(x, 1, ok_bmp, OK_BMP_WIDTH, OK_BMP_HEIGHT, SSD1306_BLACK);
   }
 }
@@ -119,11 +124,11 @@ void hide_info() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_BLACK);
   display.setCursor(1, 1);
-  display.println(menu_header_text);
+  display.println(tr(menu_header_text));
   display.display();
 }
 
-void write_scrolling_text(const char *text, void(*text_draw_func)(const char *text, const uint16_t offset), const uint16_t width) {
+void write_scrolling_text(const str_id_t text, void(*text_draw_func)(const str_id_t text, const uint16_t offset), const uint16_t width) {
   const uint16_t w_text = LARGE_CHAR_WIDTH * strlen(text);
   scroll_count = 0;
   scroll_text = text;
@@ -229,6 +234,11 @@ void init_menu() {
   delay(1000);
 }
 
+void clear_screen() {
+  display.fillRect(0, 0, display.width(), display.height(), SSD1306_BLACK);
+  display.display();
+}
+
 void draw_top_menu(uint8_t index) {
   display.clearDisplay();
   display.setTextSize(2);
@@ -238,7 +248,7 @@ void draw_top_menu(uint8_t index) {
   if (prev >= 0) {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(2, -9);
-    display.println(menu_entries[prev].name);
+    display.println(tr(menu_entries[prev].name));
   }
   
   // draw bottom line
@@ -246,7 +256,7 @@ void draw_top_menu(uint8_t index) {
   if (next >= 0) {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(2, 27);
-    display.println(menu_entries[next].name);
+    display.println(tr(menu_entries[next].name));
   }
 
   // draw middle line (scrolling)
@@ -258,9 +268,9 @@ void draw_sub_menu(uint8_t index, uint8_t option) {
   display.setTextSize(1);
 
   menu_header_text = menu_entries[index].name;
-  if (menu_entries[index].options[option].info != NULL) {
+  if (menu_entries[index].options[option].info != 0) {
     // display info hint
-    draw_info("Hold \x07 for info");
+    draw_info(STR_HOLD_FOR_INFO);
     timer.in(1500, hide_info);
   }
   else {
@@ -270,4 +280,20 @@ void draw_sub_menu(uint8_t index, uint8_t option) {
 
   // display option
   write_scrolling_text(menu_entries[index].options[option].name, &draw_sub_menu_line, display.width() - 2 - SIDE_BAR_WIDTH);
+}
+
+void menu_up()
+{
+  if (top_menu_pos > 0)
+    top_menu_pos--;
+
+  draw_top_menu(top_menu_pos);
+}
+
+void menu_down()
+{
+  if (top_menu_pos < (menu_len - 1))
+    top_menu_pos++;
+
+  draw_top_menu(top_menu_pos);
 }
